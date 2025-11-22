@@ -127,15 +127,16 @@ client.on("messageCreate", async (msg) => {
     return;
   }
 
-  // If NOT in cache → unexpected resend → forward EXACT embed
+  // If NOT in cache → unexpected resend → forward EXACT embed + @everyone
   cachedUsers.add(key);
 
   console.log(
-    `ALERT: Unexpected resend for "${user}" → forwarding embed to security webhook`
+    `ALERT: Resent user "${user}" → forwarding embed (with @everyone ping)`
   );
 
   try {
     await axios.post(SECURITY_WEBHOOK, {
+      content: "@everyone",
       embeds: msg.embeds.map((e) => e.toJSON()),
     });
   } catch (err) {
