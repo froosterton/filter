@@ -1,15 +1,16 @@
 const { Client } = require('discord.js-selfbot-v13');
 const axios = require('axios');
 
-// ------------- CONFIG (from env) -------------
-const TOKEN            = process.env.DISCORD_TOKEN;
+// ------------- CONFIG (from environment variables) -------------
+const TOKEN = process.env.DISCORD_TOKEN;
 const CACHE_CHANNEL_ID = process.env.CACHE_CHANNEL_ID;
 const WATCH_CHANNEL_ID = process.env.WATCH_CHANNEL_ID;
 const SECURITY_WEBHOOK = process.env.SECURITY_WEBHOOK;
-// ---------------------------------------------
+// ---------------------------------------------------------------
 
 if (!TOKEN || !CACHE_CHANNEL_ID || !WATCH_CHANNEL_ID || !SECURITY_WEBHOOK) {
-  console.error("Missing one or more env vars: DISCORD_TOKEN, CACHE_CHANNEL_ID, WATCH_CHANNEL_ID, SECURITY_WEBHOOK");
+  console.error("❌ Missing required environment variables.");
+  console.error("Expected: DISCORD_TOKEN, CACHE_CHANNEL_ID, WATCH_CHANNEL_ID, SECURITY_WEBHOOK");
   process.exit(1);
 }
 
@@ -120,28 +121,30 @@ client.on("messageCreate", async (msg) => {
 
   const key = user.toLowerCase();
 
-  // If NOT in cache → unexpected resend → forward EXACT embed
-  if (!cachedUsers.has(key)) {
-    cachedUsers.add(key);
-
-    console.log(
-      `ALERT: Unexpected resend for "${user}" → forwarding embed to security webhook`
-    );
-
-    try {
-      await axios.post(SECURITY_WEBHOOK, {
-        embeds: msg.embeds.map((e) => e.toJSON()),
-      });
-    } catch (err) {
-      console.error(
-        "Error sending embed:",
-        err?.response?.status,
-        err?.response?.data || err.message
-      );
-    }
+  // If user already in cache → duplicate
+  if (cachedUsers.has(key)) {
+    console.log(`Duplicate detected (already cached): ${user}`);
+    return;
   }
 
-  // If in cache → ignore silently
+  // If NOT in cache → unexpected resend → forward EXACT embed
+  cachedUsers.add(key);
+
+  console.log(
+    `ALERT: Unexpected resend for "${user}" → forwarding embed to security webhook`
+  );
+
+  try {
+    await axios.post(SECURITY_WEBHOOK, {
+      embeds: msg.embeds.map((e) => e.toJSON()),
+    });
+  } catch (err) {
+    console.error(
+      "Error sending embed:",
+      err?.response?.status,
+      err?.response?.data || err.message
+    );
+  }
 });
 
 client.login(TOKEN);
